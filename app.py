@@ -64,7 +64,10 @@ def require_login():
 @app.route('/login')
 def login():
     redirect_uri = url_for('callback', _external=True)
-    return oauth.ping.authorize_redirect(redirect_uri)
+    return oauth.ping.authorize_redirect(
+        redirect_uri,
+        ad_groups='app_test1234'
+    )
 
 @app.route('/callback')
 def callback():
