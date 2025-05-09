@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from authlib.integrations.flask_client import OAuth
+from authlib.integrations.base_client import RemoteApp
 from requests.auth import HTTPBasicAuth
 import requests
 import os
@@ -10,6 +11,13 @@ app.secret_key = 'your_secret_key'
 #Ignore SSL (Not for Prod)
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 os.environ['REQUESTS_CA_BUNDLE'] = ''  # Clear it if set
+
+# disables SSL verification globally
+class InsecurePingApp(RemoteApp):
+    def create_session(self, *args, **kwargs):
+        session = super().create_session(*args, **kwargs)
+        session.verify = False  # disables SSL verification
+        return session
 
 # OAuth setup for PingFederate
 oauth.register(
@@ -22,8 +30,7 @@ oauth.register(
         'scope': 'openid profile email',
         'code_challenge_method': 'S256'
     },
-    server_metadata_url=None,
-    verify=False  # <--- disables SSL verification
+    client_cls=InsecurePingApp  # 👈 use the override
 )
 
 # Environment Config
