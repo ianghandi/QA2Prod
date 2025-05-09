@@ -7,6 +7,9 @@ import os
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
+#Ignore SSL (Not for Prod)
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
 # OAuth setup for PingFederate
 oauth = OAuth(app)
 oauth.register(
