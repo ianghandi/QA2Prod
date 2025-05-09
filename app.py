@@ -5,6 +5,9 @@ from requests.auth import HTTPBasicAuth
 from authlib.jose import jwt
 import requests
 import os
+import secrets
+import hashlib
+import base64
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -75,19 +78,29 @@ def require_login():
 
 @app.route('/login')
 def login():
+    # Generate secure code_verifier and code_challenge
+    code_verifier = secrets.token_urlsafe(64)
+    session['code_verifier'] = code_verifier
+
+    code_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode()).digest()
+    ).rstrip(b'=').decode('utf-8')
+
     redirect_uri = url_for('callback', _external=True)
-    return oauth.ping.authorize_redirect(
-        redirect_uri,
-        ad_groups='app_test1234'
+    authorize_url = oauth.ping.client.authorize_url(
+        redirect_uri=redirect_uri,
+        code_challenge=code_challenge,
+        code_challenge_method='S256',
+        ad_groups='app_test1234'  # optional
     )
+    return redirect(authorize_url)
 
 @app.route('/callback')
 def callback():
-    # Step 1: Get authorization code from callback
     code = request.args.get('code')
     redirect_uri = url_for('callback', _external=True)
+    code_verifier = session.pop('code_verifier', None)
 
-    # Step 2: Manually exchange code for token using requests
     token_resp = requests.post(
         'https://your-pf-server/as/token.oauth2',
         data={
@@ -95,9 +108,9 @@ def callback():
             'code': code,
             'redirect_uri': redirect_uri,
             'client_id': 'YOUR_CLIENT_ID',
-            'code_verifier': oauth.ping.authorize_data.get('code_verifier')  # optional for PKCE
+            'code_verifier': code_verifier
         },
-        verify=False  # 👈 disables SSL verification here
+        verify=False
     )
 
     if token_resp.status_code != 200:
@@ -106,13 +119,11 @@ def callback():
     token = token_resp.json()
     id_token = token.get('id_token')
 
-    # Step 3: Manually fetch JWKS (or disable JWT validation completely in dev)
     jwks = requests.get('https://your-pf-server/pf/JWKS', verify=False).json()
-
+    from authlib.jose import jwt
     claims = jwt.decode(id_token, jwks)
     claims.validate()
 
-    # Step 4: Group check
     groups = claims.get('attr_memberof', [])
     if isinstance(groups, str):
         groups = [groups]
@@ -127,6 +138,7 @@ def callback():
     }
 
     return redirect('/')
+
 
 
 @app.route('/logout')
