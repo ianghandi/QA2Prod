@@ -78,7 +78,7 @@ def require_login():
 
 @app.route('/login')
 def login():
-    # Generate secure code_verifier and code_challenge
+    # Generate PKCE values
     code_verifier = secrets.token_urlsafe(64)
     session['code_verifier'] = code_verifier
 
@@ -87,13 +87,16 @@ def login():
     ).rstrip(b'=').decode('utf-8')
 
     redirect_uri = url_for('callback', _external=True)
-    authorize_url = oauth.ping.client.authorize_url(
+
+    # Manually build authorization URL
+    url, _ = oauth.ping.create_authorization_url(
         redirect_uri=redirect_uri,
         code_challenge=code_challenge,
         code_challenge_method='S256',
-        ad_groups='app_test1234'  # optional
+        ad_groups='app_test1234'
     )
-    return redirect(authorize_url)
+
+    return redirect(url)
 
 @app.route('/callback')
 def callback():
