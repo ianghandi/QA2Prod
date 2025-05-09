@@ -12,11 +12,21 @@ import base64
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
+# 🔽 Define PKCE generator here
+def generate_pkce():
+    verifier = secrets.token_urlsafe(64)[:128]  # enforce 43–128 chars
+    challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(verifier.encode('ascii')).digest()
+    ).decode('ascii').rstrip('=')
+    return verifier, challenge
+
 #Force Session Cookies
 app.config.update(
-    SESSION_COOKIE_SAMESITE='None',   # Allow across domains (dev only)
-    SESSION_COOKIE_SECURE=False,      # Don't require HTTPS in dev
-    SESSION_COOKIE_NAME='session'
+    SESSION_COOKIE_NAME='session',
+    SESSION_COOKIE_SAMESITE='None',
+    SESSION_COOKIE_SECURE=True,       # must be True when SameSite=None
+    SESSION_PERMANENT=True,
+    PERMANENT_SESSION_LIFETIME=3600
 )
 
 #Ignore SSL (Not for Prod)
@@ -85,10 +95,8 @@ def require_login():
 
 @app.route('/login')
 def login():
-    session.permanent = True  # Extend session lifetime
-
-    code_verifier = secrets.token_urlsafe(64)
-    session['code_verifier'] = code_verifier
+    verifier, challenge = generate_pkce()
+    session['code_verifier'] = verifier
     print(f"[DEBUG] code_verifier stored: {code_verifier}")
 
     code_challenge = base64.urlsafe_b64encode(
@@ -103,12 +111,14 @@ def login():
         f"&client_id=YOUR_CLIENT_ID"
         f"&redirect_uri={redirect_uri}"
         f"&scope=openid profile email"
-        f"&code_challenge={code_challenge}"
+        f"&code_challenge={challenge}"
         f"&code_challenge_method=S256"
         f"&ad_groups=app_test1234"
     )
 
-    print(f"[DEBUG] Redirecting to: {authorize_url}")
+    print("[DEBUG] Generated code_verifier:", verifier)
+    print("[DEBUG] Derived code_challenge:", challenge)
+
     return redirect(authorize_url)
 
 
@@ -118,12 +128,7 @@ def callback():
     code_verifier = session.get('code_verifier')
     redirect_uri = url_for('callback', _external=True)
 
-    if not code:
-        return "Error: Missing authorization code in callback URL.", 400
-    if not code_verifier:
-        return "Error: code_verifier not found in session. It may have expired, or cookies are blocked.", 400
-
-    print(f"[DEBUG] code_verifier retrieved: {code_verifier}")
+    print("[DEBUG] code_verifier used in token request:", code_verifier)
     print("[DEBUG] Entire session:", dict(session))
     print("[DEBUG] Session contents at callback:", dict(session))
     print("[DEBUG] Received code:", code)
@@ -149,7 +154,6 @@ def callback():
             <p>Status: {token_resp.status_code}</p>
             <pre>{token_resp.text}</pre>
         """, 400
-
 
     token = token_resp.json()
     id_token = token.get('id_token')
