@@ -107,6 +107,10 @@ def callback():
     redirect_uri = url_for('callback', _external=True)
     code_verifier = session.pop('code_verifier', None)
 
+    if not code or not code_verifier:
+        return "Missing authorization code or code_verifier", 400
+
+    # Exchange code for tokens manually
     token_resp = requests.post(
         'https://your-pf-server/as/token.oauth2',
         data={
@@ -116,7 +120,7 @@ def callback():
             'client_id': 'YOUR_CLIENT_ID',
             'code_verifier': code_verifier
         },
-        verify=False
+        verify=False  # Disable SSL cert validation in dev
     )
 
     if token_resp.status_code != 200:
@@ -125,11 +129,12 @@ def callback():
     token = token_resp.json()
     id_token = token.get('id_token')
 
+    # Fetch JWKS and validate token
     jwks = requests.get('https://your-pf-server/pf/JWKS', verify=False).json()
-    from authlib.jose import jwt
     claims = jwt.decode(id_token, jwks)
     claims.validate()
 
+    # Check group membership
     groups = claims.get('attr_memberof', [])
     if isinstance(groups, str):
         groups = [groups]
@@ -137,6 +142,7 @@ def callback():
     if 'app_test1234' not in groups:
         return "Access Denied: You are not in the authorized AD group", 403
 
+    # Store user session
     session['user'] = {
         'email': claims.get('email'),
         'name': claims.get('name'),
@@ -144,8 +150,6 @@ def callback():
     }
 
     return redirect('/')
-
-
 
 @app.route('/logout')
 def logout():
