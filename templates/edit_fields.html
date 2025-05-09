@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Edit SP Connection</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light py-4">
+  <div class="container">
+    <nav class="mb-4 d-flex align-items-center gap-2">
+      <a href="/" class="btn btn-outline-primary">Home</a>
+      <a href="/log" class="btn btn-outline-secondary">View Migration Log</a>
+      {% if session.get('user') %}
+        <span class="ms-3">Welcome, {{ session.user.name or session.user.email }}</span>
+        <a href="/logout" class="btn btn-outline-danger">Logout</a>
+      {% else %}
+        <a href="/login" class="btn btn-outline-success">Login</a>
+      {% endif %}
+    </nav>
+
+    <h1 class="mb-4">Edit SP Connection</h1>
+
+    <form method="post" action="/submit" class="row g-3">
+      <input type="hidden" name="connection_id" value="{{ connection_id }}">
+
+      <div class="col-md-6">
+        <label class="form-label">Name</label>
+        <input type="text" name="name" class="form-control" value="{{ name }}">
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Entity ID</label>
+        <input type="text" name="entityId" class="form-control" value="{{ entity_id }}">
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Base URL</label>
+        <input type="text" name="baseUrl" class="form-control" value="{{ base_url }}">
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">SSO Service Endpoint URL</label>
+        <input type="text" name="endpoint" class="form-control" value="{{ endpoint }}">
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">CRQ/INC (Required)</label>
+        <input type="text" name="crq" class="form-control" required>
+      </div>
+
+      {% if extended_properties %}
+        <div class="col-12">
+          <h5 class="mt-4">Extended Properties</h5>
+          <div class="row g-3">
+            {% for prop in extended_properties %}
+              <div class="col-md-6">
+                <label class="form-label">Property Name</label>
+                <input type="text" name="ext_name_{{ loop.index0 }}" class="form-control" value="{{ prop.name }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Property Value</label>
+                <input type="text" name="ext_value_{{ loop.index0 }}" class="form-control" value="{{ prop.value }}">
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="col-12">
+        <button type="submit" class="btn btn-success">Migrate to PROD</button>
+        <a href="/" class="btn btn-secondary ms-2">Cancel</a>
+      </div>
+    </form>
+  </div>
+</body>
+</html>
