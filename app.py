@@ -78,8 +78,11 @@ def require_login():
 
 @app.route('/login')
 def login():
+    session.permanent = True  # Extend session lifetime
+
     code_verifier = secrets.token_urlsafe(64)
     session['code_verifier'] = code_verifier
+    print(f"[DEBUG] code_verifier stored: {code_verifier}")
 
     code_challenge = base64.urlsafe_b64encode(
         hashlib.sha256(code_verifier.encode()).digest()
@@ -87,7 +90,6 @@ def login():
 
     redirect_uri = url_for('callback', _external=True)
 
-    # Manually build authorize URL
     authorize_url = (
         "https://your-pf-server/as/authorization.oauth2"
         "?response_type=code"
@@ -99,18 +101,24 @@ def login():
         f"&ad_groups=app_test1234"
     )
 
+    print(f"[DEBUG] Redirecting to: {authorize_url}")
     return redirect(authorize_url)
+
 
 @app.route('/callback')
 def callback():
     code = request.args.get('code')
+    code_verifier = session.get('code_verifier')
     redirect_uri = url_for('callback', _external=True)
-    code_verifier = session.pop('code_verifier', None)
 
-    if not code or not code_verifier:
-        return "Missing authorization code or code_verifier", 400
+    if not code:
+        return "Error: Missing authorization code in callback URL.", 400
+    if not code_verifier:
+        return "Error: code_verifier not found in session. It may have expired, or cookies are blocked.", 400
 
-    # Exchange code for tokens manually
+    print(f"[DEBUG] code_verifier retrieved: {code_verifier}")
+
+    # Proceed with token exchange as usual
     token_resp = requests.post(
         'https://your-pf-server/as/token.oauth2',
         data={
@@ -120,7 +128,7 @@ def callback():
             'client_id': 'YOUR_CLIENT_ID',
             'code_verifier': code_verifier
         },
-        verify=False  # Disable SSL cert validation in dev
+        verify=False
     )
 
     if token_resp.status_code != 200:
