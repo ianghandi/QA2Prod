@@ -9,19 +9,21 @@ app.secret_key = 'your_secret_key'
 
 #Ignore SSL (Not for Prod)
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+os.environ['REQUESTS_CA_BUNDLE'] = ''  # Clear it if set
 
 # OAuth setup for PingFederate
-oauth = OAuth(app)
 oauth.register(
     name='ping',
     client_id='YOUR_CLIENT_ID',
-    access_token_url='https://YOUR-PINGFEDERATE-DOMAIN/as/token.oauth2',
-    authorize_url='https://YOUR-PINGFEDERATE-DOMAIN/as/authorization.oauth2',
-    jwks_uri='https://YOUR-PINGFEDERATE-DOMAIN/pf/JWKS',
+    access_token_url='https://your-pf-server/as/token.oauth2',
+    authorize_url='https://your-pf-server/as/authorization.oauth2',
+    jwks_uri='https://your-pf-server/pf/JWKS',
     client_kwargs={
         'scope': 'openid profile email',
         'code_challenge_method': 'S256'
-    }
+    },
+    server_metadata_url=None,
+    verify=False  # <--- disables SSL verification
 )
 
 # Environment Config
