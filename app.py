@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from authlib.integrations.flask_client import OAuth
 from authlib.integrations.requests_client import OAuth2Session
 from requests.auth import HTTPBasicAuth
+from authlib.jose import jwt
 import requests
 import os
 
@@ -82,15 +83,36 @@ def login():
 
 @app.route('/callback')
 def callback():
-    token = oauth.ping.authorize_access_token()
-    user_info = token.get('userinfo') or token.get('id_token')
+    # Step 1: Get authorization code from callback
+    code = request.args.get('code')
+    redirect_uri = url_for('callback', _external=True)
 
-    if isinstance(user_info, str):
-        from authlib.jose import jwt
-        claims = jwt.decode(user_info, key=None, claims_options={"iss": {"essential": True}})
-    else:
-        claims = user_info
+    # Step 2: Manually exchange code for token using requests
+    token_resp = requests.post(
+        'https://your-pf-server/as/token.oauth2',
+        data={
+            'grant_type': 'authorization_code',
+            'code': code,
+            'redirect_uri': redirect_uri,
+            'client_id': 'YOUR_CLIENT_ID',
+            'code_verifier': oauth.ping.authorize_data.get('code_verifier')  # optional for PKCE
+        },
+        verify=False  # 👈 disables SSL verification here
+    )
 
+    if token_resp.status_code != 200:
+        return f"Token fetch failed: {token_resp.text}", 400
+
+    token = token_resp.json()
+    id_token = token.get('id_token')
+
+    # Step 3: Manually fetch JWKS (or disable JWT validation completely in dev)
+    jwks = requests.get('https://your-pf-server/pf/JWKS', verify=False).json()
+
+    claims = jwt.decode(id_token, jwks)
+    claims.validate()
+
+    # Step 4: Group check
     groups = claims.get('attr_memberof', [])
     if isinstance(groups, str):
         groups = [groups]
@@ -103,7 +125,9 @@ def callback():
         'name': claims.get('name'),
         'groups': groups
     }
+
     return redirect('/')
+
 
 @app.route('/logout')
 def logout():
