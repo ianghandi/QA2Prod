@@ -12,6 +12,13 @@ import base64
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
+#Force Session Cookies
+app.config.update(
+    SESSION_COOKIE_SAMESITE='None',   # Allow across domains (dev only)
+    SESSION_COOKIE_SECURE=False,      # Don't require HTTPS in dev
+    SESSION_COOKIE_NAME='session'
+)
+
 #Ignore SSL (Not for Prod)
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 os.environ['REQUESTS_CA_BUNDLE'] = ''  # Clear it if set
