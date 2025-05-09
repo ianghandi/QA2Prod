@@ -78,7 +78,6 @@ def require_login():
 
 @app.route('/login')
 def login():
-    # Generate PKCE values
     code_verifier = secrets.token_urlsafe(64)
     session['code_verifier'] = code_verifier
 
@@ -88,14 +87,19 @@ def login():
 
     redirect_uri = url_for('callback', _external=True)
 
-    # Properly extract URL from returned dictionary
-    auth_data = oauth.ping.create_authorization_url(
-        redirect_uri=redirect_uri,
-        code_challenge=code_challenge,
-        code_challenge_method='S256',
-        ad_groups='app_test1234'
+    # Manually build authorize URL
+    authorize_url = (
+        "https://your-pf-server/as/authorization.oauth2"
+        "?response_type=code"
+        f"&client_id=YOUR_CLIENT_ID"
+        f"&redirect_uri={redirect_uri}"
+        f"&scope=openid profile email"
+        f"&code_challenge={code_challenge}"
+        f"&code_challenge_method=S256"
+        f"&ad_groups=app_test1234"
     )
-    return redirect(auth_data['url'])
+
+    return redirect(authorize_url)
 
 @app.route('/callback')
 def callback():
