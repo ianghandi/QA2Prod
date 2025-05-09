@@ -125,7 +125,10 @@ def callback():
 
     print(f"[DEBUG] code_verifier retrieved: {code_verifier}")
     print("[DEBUG] Entire session:", dict(session))
-
+    print("[DEBUG] Session contents at callback:", dict(session))
+    print("[DEBUG] Received code:", code)
+    print("[DEBUG] Using code_verifier:", code_verifier)
+    
     # Proceed with token exchange as usual
     token_resp = requests.post(
         'https://your-pf-server/as/token.oauth2',
@@ -138,9 +141,15 @@ def callback():
         },
         verify=False
     )
+    print("[DEBUG] Token Response:", token_resp.status_code, token_resp.text)
 
     if token_resp.status_code != 200:
-        return f"Token fetch failed: {token_resp.text}", 400
+        return f"""
+            <h1>Token fetch failed</h1>
+            <p>Status: {token_resp.status_code}</p>
+            <pre>{token_resp.text}</pre>
+        """, 400
+
 
     token = token_resp.json()
     id_token = token.get('id_token')
