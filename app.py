@@ -88,15 +88,14 @@ def login():
 
     redirect_uri = url_for('callback', _external=True)
 
-    # Manually build authorization URL
-    url, _ = oauth.ping.create_authorization_url(
+    # Properly extract URL from returned dictionary
+    auth_data = oauth.ping.create_authorization_url(
         redirect_uri=redirect_uri,
         code_challenge=code_challenge,
         code_challenge_method='S256',
         ad_groups='app_test1234'
     )
-
-    return redirect(url)
+    return redirect(auth_data['url'])
 
 @app.route('/callback')
 def callback():
