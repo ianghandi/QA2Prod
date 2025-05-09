@@ -124,6 +124,7 @@ def callback():
         return "Error: code_verifier not found in session. It may have expired, or cookies are blocked.", 400
 
     print(f"[DEBUG] code_verifier retrieved: {code_verifier}")
+    print("[DEBUG] Entire session:", dict(session))
 
     # Proceed with token exchange as usual
     token_resp = requests.post(
