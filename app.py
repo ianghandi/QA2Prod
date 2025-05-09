@@ -12,11 +12,13 @@ oauth = OAuth(app)
 oauth.register(
     name='ping',
     client_id='YOUR_CLIENT_ID',
-    client_secret='YOUR_CLIENT_SECRET',
     access_token_url='https://YOUR-PINGFEDERATE-DOMAIN/as/token.oauth2',
     authorize_url='https://YOUR-PINGFEDERATE-DOMAIN/as/authorization.oauth2',
     jwks_uri='https://YOUR-PINGFEDERATE-DOMAIN/pf/JWKS',
-    client_kwargs={'scope': 'openid profile email'}
+    client_kwargs={
+        'scope': 'openid profile email',
+        'code_challenge_method': 'S256'
+    }
 )
 
 # Environment Config
